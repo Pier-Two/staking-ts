@@ -19,7 +19,7 @@ async function main() {
   fs.writeFileSync(inputPath, JSON.stringify(specJson, null, 2));
 
   generateApi({
-    name: 'PierTwoStakingApiBase.ts',
+    fileName: 'PierTwoStakingApiBase.ts',
     output: outputPath,
     input: inputPath,
     unwrapResponseData: true
