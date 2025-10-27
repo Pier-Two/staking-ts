@@ -40,6 +40,11 @@ export interface GetAccountResponse {
    */
   kycStatus: string;
   /**
+   * User region as ISO 3166-1 alpha-2 country code
+   * @example "US"
+   */
+  region: string;
+  /**
    * Details of agreed terms and conditions
    * @example {"applicableTerms":"general","agreedTerms":{"29-05-2024":"2024-08-19T22:35:52.622Z"}}
    */
@@ -56,7 +61,25 @@ export interface ApiRoles {
   reader?: boolean;
 }
 
+export interface IpRestrictionDto {
+  /**
+   * List of allowed CIDR ranges (IPv4 and IPv6 supported). Singular IPs must be encoded as host CIDRs (IPv4 /32, IPv6 /128).
+   * @example ["192.168.1.0/24","10.0.0.50/32","2001:db8::/32","::1/128"]
+   */
+  allowedCidrs: string[];
+}
+
+export interface IpRestrictionConfigDto {
+  /** IP restriction rules */
+  restrictions: IpRestrictionDto;
+}
+
 export interface GetApiKeyDto {
+  /**
+   * Internal id of the API key
+   * @example "66f181818181818181818181"
+   */
+  keyId: string;
   /** @example "Default API Key" */
   name: string;
   /** @example "0b381d39-43b4-480f-b3c9-f3ff3d19cb0a" */
@@ -64,15 +87,29 @@ export interface GetApiKeyDto {
   /** @format date-time */
   deletedAt?: string;
   roles: ApiRoles;
+  /** IP restrictions for this API key */
+  ipRestrictions?: IpRestrictionConfigDto;
 }
 
 export interface CreateApiKeyDto {
   /** @example "Default API Key" */
   name: string;
   roles?: ApiRoles;
+  /** IP restriction configuration for the API key */
+  ipRestrictions?: IpRestrictionConfigDto;
 }
 
 export type CustomerSummary = object;
+
+export interface GetIpRestrictionsResponseDto {
+  /** IP restriction configuration */
+  ipRestrictions: IpRestrictionConfigDto;
+}
+
+export interface UpdateAccountIpRestrictionsDto {
+  /** IP restriction configuration for the account */
+  ipRestrictions: IpRestrictionConfigDto;
+}
 
 export interface PaginationData {
   totalCount: number;
@@ -188,6 +225,7 @@ export interface StakeDetails {
   stakeId: number;
   customerId: number;
   reference: string;
+  region?: "US" | "AU";
   label: string;
   withdrawalAddress: string;
   suggestedFeeRecipient: string;
@@ -223,6 +261,11 @@ export interface CreateStakeDto {
    * @example "Stake for 2 vallies"
    */
   label?: string;
+  /**
+   * region
+   * @example "AU"
+   */
+  region?: "US" | "AU";
 }
 
 export interface Validator {
@@ -231,6 +274,7 @@ export interface Validator {
   amount: number;
   signature: string;
   deposit_message_root: string;
+  region?: "US" | "AU";
   deposit_data_root: string;
   fork_version: string;
   network_name: string;
@@ -247,6 +291,7 @@ export interface StakeDetailsWithValidators {
   stakeId: number;
   customerId: number;
   reference: string;
+  region?: "US" | "AU";
   label: string;
   withdrawalAddress: string;
   suggestedFeeRecipient: string;
@@ -291,6 +336,11 @@ export interface CreateStakePectraDto {
    * @example "Staking 100 ETH"
    */
   label?: string;
+  /**
+   * region
+   * @example "AU"
+   */
+  region?: "US" | "AU";
 }
 
 export interface DataWithMessage {
@@ -326,6 +376,7 @@ export interface StakeWithValidatorStatusCounts {
   stakeId: number;
   reference: string;
   validatorStatusCounts: ValidatorStatusCounts;
+  region?: "US" | "AU";
 }
 
 export interface ValidatorWithStakeDetails {
@@ -334,6 +385,7 @@ export interface ValidatorWithStakeDetails {
   amount: number;
   signature: string;
   deposit_message_root: string;
+  region?: "US" | "AU";
   deposit_data_root: string;
   fork_version: string;
   network_name: string;
@@ -638,6 +690,8 @@ export interface QueueStats {
   activeValidators: number;
   exitingValidators: number;
   enteringValidators: number;
+  exitingBalanceGwei: string;
+  enteringBalanceGwei: string;
 }
 
 export interface ValidatorInfo {
@@ -1723,10 +1777,15 @@ export interface SystemInfoResponse {
    */
   apiGatewayVersion: string;
   /**
-   * Version of the internal Ethereum staking API
+   * Version of the internal Ethereum staking API for AU region
    * @example "1.0.0"
    */
-  ethStakingApiVersion: string;
+  auEthStakingApiVersion: string;
+  /**
+   * Version of the internal Ethereum staking API for US region
+   * @example "1.0.0"
+   */
+  usEthStakingApiVersion: string;
 }
 
 export interface RegisterLsEthResponse {
@@ -2526,7 +2585,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Pier Two Staking API
- * @version 1.0.103-main-mainnet
+ * @version 1.0.113-main-mainnet
  * @baseUrl https://gw-1.api.piertwo.io
  * @contact
  *
@@ -2614,16 +2673,16 @@ export class Api<
      * @tags Account
      * @name RevokeApiKey
      * @summary Revoke an API key
-     * @request PUT:/account/apikeys/{key}
+     * @request PUT:/account/apikeys/{keyId}
      */
-    revokeApiKey: (key: string, params: RequestParams = {}) =>
+    revokeApiKey: (keyId: string, params: RequestParams = {}) =>
       this.request<
         UtilRequiredKeys<ApiResponseBase, "data"> & {
           data: GetApiKeyDto;
         },
         any
       >({
-        path: `/account/apikeys/${key}`,
+        path: `/account/apikeys/${keyId}`,
         method: "PUT",
         format: "json",
         ...params,
@@ -2646,6 +2705,100 @@ export class Api<
       >({
         path: `/account/summary`,
         method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get IP restrictions for user account (JWT authentication)
+     *
+     * @tags Account
+     * @name GetUserIpRestrictions
+     * @summary Get user IP restrictions
+     * @request GET:/account/userIpRestrictions
+     */
+    getUserIpRestrictions: (params: RequestParams = {}) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: GetIpRestrictionsResponseDto;
+        },
+        any
+      >({
+        path: `/account/userIpRestrictions`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update IP restrictions for user account (JWT authentication)
+     *
+     * @tags Account
+     * @name UpdateUserIpRestrictions
+     * @summary Update user IP restrictions
+     * @request PUT:/account/userIpRestrictions
+     */
+    updateUserIpRestrictions: (
+      data: UpdateAccountIpRestrictionsDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: GetIpRestrictionsResponseDto;
+        },
+        any
+      >({
+        path: `/account/userIpRestrictions`,
+        method: "PUT",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get default IP restrictions for all API keys under the account
+     *
+     * @tags Account
+     * @name GetApiKeyDefaultIpRestrictions
+     * @summary Get API key default IP restrictions
+     * @request GET:/account/apiKeyDefaultIpRestrictions
+     */
+    getApiKeyDefaultIpRestrictions: (params: RequestParams = {}) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: GetIpRestrictionsResponseDto;
+        },
+        any
+      >({
+        path: `/account/apiKeyDefaultIpRestrictions`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update default IP restrictions for all API keys under the account
+     *
+     * @tags Account
+     * @name UpdateApiKeyDefaultIpRestrictions
+     * @summary Update API key default IP restrictions
+     * @request PUT:/account/apiKeyDefaultIpRestrictions
+     */
+    updateApiKeyDefaultIpRestrictions: (
+      data: UpdateAccountIpRestrictionsDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: GetIpRestrictionsResponseDto;
+        },
+        any
+      >({
+        path: `/account/apiKeyDefaultIpRestrictions`,
+        method: "PUT",
+        body: data,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -3051,7 +3204,7 @@ export class Api<
       }),
 
     /**
-     * @description Generate one or more pre-signed exit messages for a specified list of public keys
+     * @description Generate one or more pre-signed exit messages for a specified list of public keys. You are not guaranteed one result per public key provided. Errors generating exit messages (usually caused by validator not being active or not being known to the system) will be handled silently and a result for this public key will not be included in the response. Your code should not assume one result per public key or consistent ordering of results.
      *
      * @tags Ethereum
      * @name GenEthereumPresignedExitMsg
