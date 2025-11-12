@@ -142,6 +142,7 @@ export interface SolanaStakeAccount {
   performanceTotal: string;
   performance30d: string;
   performance7d: string;
+  votePubkey?: string;
 }
 
 export interface SolanaTransactionSignature {
@@ -224,14 +225,19 @@ export interface SolanaStakingNetworkInfo {
 export interface StakeDetails {
   stakeId: number;
   customerId: number;
+  /** @format date-time */
+  createdAt?: string;
   reference: string;
   region?: "US" | "AU";
   label: string;
   withdrawalAddress: string;
   suggestedFeeRecipient: string;
+  validatorStartIndex: number;
   validatorCount: number;
   status: string;
   message: string;
+  /** Stake history entries */
+  history?: object[];
 }
 
 export interface CreateStakeResponse {
@@ -268,6 +274,277 @@ export interface CreateStakeDto {
   region?: "US" | "AU";
 }
 
+export interface SimulationLog {
+  /**
+   * Event name (if decoded)
+   * @example ""
+   */
+  name: string;
+  /**
+   * Contract address that emitted the log
+   * @example "0x00000000219ab540356cbb839cbe05303d7705fa"
+   */
+  address: string;
+  /**
+   * Raw log data
+   * @example "0x00000000000000000000000000000000000000000000000000000000000000a0..."
+   */
+  data: string;
+  /**
+   * Event topic hashes
+   * @example ["0x649bbc62d0e31342afea4e5cd82d4049e7e1ee912fc0889aa790803be39038c5"]
+   */
+  topics: string[];
+}
+
+export interface SimulationStateDiffRaw {
+  /**
+   * Contract address
+   * @example "0x00000000219ab540356cbb839cbe05303d7705fa"
+   */
+  address: string;
+  /**
+   * Storage slot key
+   * @example "0x0000000000000000000000000000000000000000000000000000000000000000"
+   */
+  key: string;
+  /**
+   * Original value at storage slot
+   * @example "0x5e0221fc22d93c98e0c1ba43cad66f8ed0c423b355f548ecaecb8b9ac1e87000"
+   */
+  original: string;
+  /**
+   * New value at storage slot
+   * @example "0x2103b2b3bed9441170c8483184139f999e1e3feef8d17840ac3082a394718f7e"
+   */
+  dirty: string;
+}
+
+export interface SimulationStateDiff {
+  /**
+   * Contract address with state changes
+   * @example "0x00000000219ab540356cbb839cbe05303d7705fa"
+   */
+  address: string;
+  /**
+   * Solidity type information (if available)
+   * @example null
+   */
+  soltype?: object;
+  /**
+   * Original value (if available)
+   * @example null
+   */
+  original?: object;
+  /**
+   * Dirty value (if available)
+   * @example null
+   */
+  dirty?: object;
+  /** Raw state diff entries */
+  raw: SimulationStateDiffRaw[];
+}
+
+export interface SimulationBalanceDiff {
+  /**
+   * Address with balance change
+   * @example "0x0000000000000000000000000000000000000000"
+   */
+  address: string;
+  /**
+   * Original balance before transaction
+   * @example "340759134036041748877"
+   */
+  original: string;
+  /**
+   * Balance after transaction
+   * @example "339759057341860188039"
+   */
+  dirty: string;
+  /**
+   * Whether this address is the miner/validator
+   * @example false
+   */
+  is_miner: boolean;
+}
+
+export interface AssetTokenInfo {
+  /**
+   * Token standard (e.g., NativeCurrency, ERC20, ERC721)
+   * @example "NativeCurrency"
+   */
+  standard: string;
+  /**
+   * Token type (Fungible, NonFungible)
+   * @example "Fungible"
+   */
+  type: string;
+  /**
+   * Token contract address (0x0 for native currency)
+   * @example "0x0000000000000000000000000000000000000000"
+   */
+  contract_address: string;
+  /**
+   * Token symbol
+   * @example "ETH"
+   */
+  symbol: string;
+  /**
+   * Token name
+   * @example "Ether"
+   */
+  name: string;
+  /**
+   * Token logo URL
+   * @example "https://coin-images.coingecko.com/coins/images/279/large/ethereum.png?1696501628"
+   */
+  logo?: string;
+  /**
+   * Token decimals
+   * @example 18
+   */
+  decimals: number;
+  /**
+   * Dollar value of the token
+   * @example "0"
+   */
+  dollar_value?: string;
+}
+
+export interface SimulationAssetChange {
+  /** Token information */
+  token_info: AssetTokenInfo;
+  /**
+   * Type of asset change
+   * @example "Transfer"
+   */
+  type: string;
+  /**
+   * Source address
+   * @example "0x0000000000000000000000000000000000000000"
+   */
+  from: string;
+  /**
+   * Destination address
+   * @example "0x00000000219ab540356cbb839cbe05303d7705fa"
+   */
+  to: string;
+  /**
+   * Human-readable amount
+   * @example "1"
+   */
+  amount: string;
+  /**
+   * Raw amount in smallest unit (wei, etc.)
+   * @example "1000000000000000000"
+   */
+  raw_amount: string;
+  /**
+   * Dollar value of the transfer
+   * @example "0"
+   */
+  dollar_value?: string;
+  /**
+   * Balance before transfer (from address)
+   * @example "0x1278fba2fc8bfd518d"
+   */
+  from_before_balance?: string;
+  /**
+   * Balance before transfer (to address)
+   * @example "0x829b4ec2eed78acb84200"
+   */
+  to_before_balance?: string;
+}
+
+export interface SimulationData {
+  /**
+   * Simulation ID (if provided by the simulation service)
+   * @example "7e8936af-485d-4aff-b487-6564830128ba"
+   */
+  simulationId?: string;
+  /**
+   * Whether the simulation was successful
+   * @example true
+   */
+  success: boolean;
+  /**
+   * Transaction execution cost (gas in EVM, compute units in Solana, etc.)
+   * @example 150000
+   */
+  executionCost: number;
+  /**
+   * Cost per unit (gas price, fee, etc.)
+   * @example "20000000000"
+   */
+  costPerUnit: string;
+  /**
+   * Total cost of the transaction
+   * @example "3000000000000000"
+   */
+  totalCost: string;
+  /**
+   * Transaction logs/events from the simulation
+   * @example [{"name":"","address":"0x00000000219ab540356cbb839cbe05303d7705fa","data":"0x00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000140000000000000000000000000000000000000000000000000000000000000018000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000030a20d2ba70419cb3922985488e339736ab32e6184f11708d2333f65b14f70cf47365b538c32eff237cdaf293ea2bcfb03000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000506965722054776f000000000000000000000000000000000000000000000000000000000000000800ca9a3b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000506965722054776f0000000000000000000000000000000000000000000000000000000000000008e61a030000000000000000000000000000000000000000000000000000000000","topics":["0x649bbc62d0e31342afea4e5cd82d4049e7e1ee912fc0889aa790803be39038c5"]}]
+   */
+  logs: SimulationLog[];
+  /**
+   * State changes from the simulation
+   * @example [{"address":"0x00000000219ab540356cbb839cbe05303d7705fa","soltype":null,"original":null,"dirty":null,"raw":[{"address":"0x00000000219ab540356cbb839cbe05303d7705fa","key":"0x0000000000000000000000000000000000000000000000000000000000000000","original":"0x5e0221fc22d93c98e0c1ba43cad66f8ed0c423b355f548ecaecb8b9ac1e87000","dirty":"0x2103b2b3bed9441170c8483184139f999e1e3feef8d17840ac3082a394718f7e"},{"address":"0x00000000219ab540356cbb839cbe05303d7705fa","key":"0x0000000000000000000000000000000000000000000000000000000000000020","original":"0x0000000000000000000000000000000000000000000000000000000000031ae6","dirty":"0x0000000000000000000000000000000000000000000000000000000000031ae7"}]}]
+   */
+  stateDiff: SimulationStateDiff[];
+  /**
+   * Balance differences from the simulation
+   * @example [{"address":"0x0000000000000000000000000000000000000000","original":"340759134036041748877","dirty":"339759057341860188039","is_miner":false},{"address":"0x00000000219ab540356cBB839Cbe05303d7705Fa","original":"9868361015449101000000000","dirty":"9868362015449101000000000","is_miner":false}]
+   */
+  balanceDiff?: SimulationBalanceDiff[];
+  /**
+   * Asset changes from the simulation
+   * @example [{"token_info":{"standard":"NativeCurrency","type":"Fungible","contract_address":"0x0000000000000000000000000000000000000000","symbol":"ETH","name":"Ether","logo":"https://coin-images.coingecko.com/coins/images/279/large/ethereum.png?1696501628","decimals":18,"dollar_value":"0"},"type":"Transfer","from":"0x0000000000000000000000000000000000000000","to":"0x00000000219ab540356cbb839cbe05303d7705fa","amount":"1","raw_amount":"1000000000000000000","dollar_value":"0","from_before_balance":"0x1278fba2fc8bfd518d","to_before_balance":"0x829b4ec2eed78acb84200"}]
+   */
+  assetChanges?: SimulationAssetChange[];
+  /**
+   * Error information if simulation failed
+   * @example {"errorType":"execution_reverted","errorMessage":"Transaction reverted","revertReason":"Insufficient balance"}
+   */
+  error?: object;
+  /**
+   * Shareable URL for the simulation (if available)
+   * @example "https://simulator.example.com/..."
+   */
+  shareUrl?: string;
+}
+
+export interface TransactionAnalysisObservation {
+  /**
+   * Source of the observation (e.g., simulation, validation, custom)
+   * @example "simulation"
+   */
+  source: string;
+  /**
+   * Observation message describing the issue or finding
+   * @example "Transaction simulation succeeded"
+   */
+  message: string;
+  /**
+   * Severity level of the observation
+   * @example "info"
+   */
+  severity: "info" | "warn" | "danger";
+}
+
+export interface TransactionAnalysis {
+  /**
+   * Simulation data from blockchain simulations, keyed by source (e.g., tenderly). The schema for each simulation source follows the SimulationData structure.
+   * @example {"tenderly":{"simulationId":"4e5e1636-f422-49f7-beba-88b274a201a5","success":true,"executionCost":49314,"costPerUnit":"1555221267","totalCost":"76694181560838","logs":[{"name":"","address":"0x00000000219ab540356cbb839cbe05303d7705fa","data":"0x00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000140000000000000000000000000000000000000000000000000000000000000018000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000030a20d2ba70419cb3922985488e339736ab32e6184f11708d2333f65b14f70cf47365b538c32eff237cdaf293ea2bcfb03000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000506965722054776f000000000000000000000000000000000000000000000000000000000000000800ca9a3b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000506965722054776f0000000000000000000000000000000000000000000000000000000000000008e61a030000000000000000000000000000000000000000000000000000000000","topics":["0x649bbc62d0e31342afea4e5cd82d4049e7e1ee912fc0889aa790803be39038c5"]}],"stateDiff":[{"address":"0x00000000219ab540356cbb839cbe05303d7705fa","soltype":null,"original":null,"dirty":null,"raw":[{"address":"0x00000000219ab540356cbb839cbe05303d7705fa","key":"0x0000000000000000000000000000000000000000000000000000000000000000","original":"0x5e0221fc22d93c98e0c1ba43cad66f8ed0c423b355f548ecaecb8b9ac1e87000","dirty":"0x2103b2b3bed9441170c8483184139f999e1e3feef8d17840ac3082a394718f7e"}]}],"balanceDiff":[{"address":"0x0000000000000000000000000000000000000000","original":"340759134036041748877","dirty":"339759057341860188039","is_miner":false},{"address":"0x00000000219ab540356cBB839Cbe05303d7705Fa","original":"9868361015449101000000000","dirty":"9868362015449101000000000","is_miner":false}],"assetChanges":[{"token_info":{"standard":"NativeCurrency","type":"Fungible","contract_address":"0x0000000000000000000000000000000000000000","symbol":"ETH","name":"Ether","logo":"https://coin-images.coingecko.com/coins/images/279/large/ethereum.png?1696501628","decimals":18,"dollar_value":"0"},"type":"Transfer","from":"0x0000000000000000000000000000000000000000","to":"0x00000000219ab540356cbb839cbe05303d7705fa","amount":"1","raw_amount":"1000000000000000000","dollar_value":"0","from_before_balance":"0x1278fba2fc8bfd518d","to_before_balance":"0x829b4ec2eed78acb84200"}],"shareUrl":"https://www.tdly.co/shared/simulation/4e5e1636-f422-49f7-beba-88b274a201a5"}}
+   */
+  simulations?: Record<string, SimulationData>;
+  /**
+   * Array of observations from various sources
+   * @example [{"source":"validation","message":"All validators found in user records","severity":"info"},{"source":"simulation","message":"Transaction simulation succeeded","severity":"info"}]
+   */
+  observations: TransactionAnalysisObservation[];
+}
+
 export interface Validator {
   pubkey: string;
   withdrawal_credentials: string;
@@ -285,24 +562,94 @@ export interface Validator {
   statusLastChecked: string;
   balanceGwei: string;
   effectiveBalanceGwei: string;
+  /** Stake Object ID from database */
+  stakeOid?: string;
+  /** Stake ID */
+  stakeId?: number;
+  /** Withdrawal address for the validator */
+  withdrawalAddress?: string;
+  /** Transaction analysis data */
+  analysis?: TransactionAnalysis;
 }
 
 export interface StakeDetailsWithValidators {
   stakeId: number;
   customerId: number;
+  /** @format date-time */
+  createdAt?: string;
   reference: string;
   region?: "US" | "AU";
   label: string;
   withdrawalAddress: string;
   suggestedFeeRecipient: string;
+  validatorStartIndex: number;
   validatorCount: number;
   status: string;
   message: string;
+  /** Stake history entries */
+  history?: object[];
   validators: Validator[];
+}
+
+export interface EthereumTransactionCraftingWithAnalysisResponse {
+  /**
+   * target contract address
+   * @example "0x0000000000000000000000000000000000000000"
+   */
+  to: string;
+  /**
+   * serialised calldata
+   * @example "0x02f86d59085208943b57d2c0f0db7b7a5e080c0"
+   */
+  data: string;
+  /**
+   * ETH value to send with transaction (in wei)
+   * @example "1000000000000000000"
+   */
+  value: string;
+  /**
+   * nonce value, this is based on the provided fromAddress
+   * @example 3
+   */
+  nonce: number;
+  /**
+   * Gas limit for the transaction
+   * @example "21000"
+   */
+  gas: string;
+  /**
+   * Ethereum network chainId
+   * @example 560048
+   */
+  chainId: number;
+  /**
+   * Maximum fee per gas in wei
+   * @example "20000000000"
+   */
+  maxFeePerGas: string;
+  /**
+   * Maximum priority fee per gas in wei
+   * @example "1000000000"
+   */
+  maxPriorityFeePerGas: string;
+  /**
+   * serialized unsigned transaction made up of other returned fields
+   * @example "0x02f86d01808459682f00825208943b3b57de6e72c0f0db7b7a73b3e3e5e5e5e5e5e588016345785d8a000080c0"
+   */
+  serialized: string;
+  /** Transaction analysis including validations and observations */
+  analysis: TransactionAnalysis;
 }
 
 export interface CreateStakeV2Response {
   stake: StakeDetailsWithValidators;
+  /**
+   * Success message
+   * @example "requested 1 validators successfully"
+   */
+  message?: string;
+  /** Pre-crafted batch deposit transaction. Null if no validators were created. */
+  transaction?: EthereumTransactionCraftingWithAnalysisResponse | null;
 }
 
 export interface CreateStakePectraDto {
@@ -341,6 +688,11 @@ export interface CreateStakePectraDto {
    * @example "AU"
    */
   region?: "US" | "AU";
+  /**
+   * The address to send the transaction from. If not provided, withdrawalAddress will be used.
+   * @example "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+   */
+  fromAddress?: string;
 }
 
 export interface DataWithMessage {
@@ -396,7 +748,14 @@ export interface ValidatorWithStakeDetails {
   statusLastChecked: string;
   balanceGwei: string;
   effectiveBalanceGwei: string;
-  withdrawalAddress: string;
+  /** Stake Object ID from database */
+  stakeOid?: string;
+  /** Stake ID */
+  stakeId?: number;
+  /** Withdrawal address for the validator */
+  withdrawalAddress?: string;
+  /** Transaction analysis data */
+  analysis?: TransactionAnalysis;
   reference: string;
   label: string;
 }
@@ -453,54 +812,6 @@ export interface ValidatorDeposit {
 export interface GenerateDepositDataDto {
   /** @example [{"pubkey":"a20d2ba70419cb3922985488e339736ab32e6184f11708d2333f65b14f70cf47365b538c32eff237cdaf293ea2bcfb03","amountGwei":"1000000000"}] */
   deposits: ValidatorDeposit[];
-}
-
-export interface EthereumTransactionCraftingResponse {
-  /**
-   * target contract address
-   * @example "0x0000000000000000000000000000000000000000"
-   */
-  to: string;
-  /**
-   * serialised calldata
-   * @example "0x02f86d59085208943b57d2c0f0db7b7a5e080c0"
-   */
-  data: string;
-  /**
-   * ETH value to send with transaction (in wei)
-   * @example "1000000000000000000"
-   */
-  value: string;
-  /**
-   * nonce value, this is based on the provided fromAddress
-   * @example 3
-   */
-  nonce: number;
-  /**
-   * Gas limit for the transaction
-   * @example "21000"
-   */
-  gas: string;
-  /**
-   * Ethereum network chainId
-   * @example 560048
-   */
-  chainId: number;
-  /**
-   * Maximum fee per gas in wei
-   * @example "20000000000"
-   */
-  maxFeePerGas: string;
-  /**
-   * Maximum priority fee per gas in wei
-   * @example "1000000000"
-   */
-  maxPriorityFeePerGas: string;
-  /**
-   * serialized unsigned transaction made up of other returned fields
-   * @example "0x02f86d01808459682f00825208943b3b57de6e72c0f0db7b7a73b3e3e5e5e5e5e5e588016345785d8a000080c0"
-   */
-  serialized: string;
 }
 
 export interface EthereumValidatorTopupDto {
@@ -2585,7 +2896,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Pier Two Staking API
- * @version 1.0.113-main-mainnet
+ * @version 1.0.116-main-mainnet
  * @baseUrl https://gw-1.api.piertwo.io
  * @contact
  *
@@ -3347,7 +3658,7 @@ export class Api<
     ) =>
       this.request<
         UtilRequiredKeys<ApiResponseBase, "data"> & {
-          data: EthereumTransactionCraftingResponse;
+          data: EthereumTransactionCraftingWithAnalysisResponse;
         },
         any
       >({
@@ -3373,7 +3684,7 @@ export class Api<
     ) =>
       this.request<
         UtilRequiredKeys<ApiResponseBase, "data"> & {
-          data: EthereumTransactionCraftingResponse;
+          data: EthereumTransactionCraftingWithAnalysisResponse;
         },
         any
       >({
@@ -3399,7 +3710,7 @@ export class Api<
     ) =>
       this.request<
         UtilRequiredKeys<ApiResponseBase, "data"> & {
-          data: EthereumTransactionCraftingResponse;
+          data: EthereumTransactionCraftingWithAnalysisResponse;
         },
         any
       >({
@@ -3425,7 +3736,7 @@ export class Api<
     ) =>
       this.request<
         UtilRequiredKeys<ApiResponseBase, "data"> & {
-          data: EthereumTransactionCraftingResponse;
+          data: EthereumTransactionCraftingWithAnalysisResponse;
         },
         any
       >({
@@ -3451,7 +3762,7 @@ export class Api<
     ) =>
       this.request<
         UtilRequiredKeys<ApiResponseBase, "data"> & {
-          data: EthereumTransactionCraftingResponse;
+          data: EthereumTransactionCraftingWithAnalysisResponse;
         },
         any
       >({
@@ -3477,7 +3788,7 @@ export class Api<
     ) =>
       this.request<
         UtilRequiredKeys<ApiResponseBase, "data"> & {
-          data: EthereumTransactionCraftingResponse;
+          data: EthereumTransactionCraftingWithAnalysisResponse;
         },
         any
       >({
@@ -4722,7 +5033,7 @@ export class Api<
     craftLsEthDepositTx: (data: LsEthDepositDto, params: RequestParams = {}) =>
       this.request<
         UtilRequiredKeys<ApiResponseBase, "data"> & {
-          data: EthereumTransactionCraftingResponse;
+          data: EthereumTransactionCraftingWithAnalysisResponse;
         },
         any
       >({
@@ -4745,7 +5056,7 @@ export class Api<
     craftLsEthRedeemTx: (data: LsEthRedeemDto, params: RequestParams = {}) =>
       this.request<
         UtilRequiredKeys<ApiResponseBase, "data"> & {
-          data: EthereumTransactionCraftingResponse;
+          data: EthereumTransactionCraftingWithAnalysisResponse;
         },
         any
       >({
@@ -4869,7 +5180,7 @@ export class Api<
     ) =>
       this.request<
         UtilRequiredKeys<ApiResponseBase, "data"> & {
-          data: EthereumTransactionCraftingResponse;
+          data: EthereumTransactionCraftingWithAnalysisResponse;
         },
         any
       >({
