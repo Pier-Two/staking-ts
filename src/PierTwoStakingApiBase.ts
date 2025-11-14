@@ -274,6 +274,72 @@ export interface CreateStakeDto {
   region?: "US" | "AU";
 }
 
+export interface ValidatorDeposit {
+  amount: number;
+  slot: number;
+  status: "QUEUED" | "PROCESSED";
+}
+
+export interface ValidatorWithdrawal {
+  amount: number;
+  withdrawableEpoch: number;
+  status: "QUEUED" | "PROCESSED";
+}
+
+export interface ValidatorConsolidation {
+  amount: number;
+  targetPubkey: string;
+  sourcePubkey: string;
+  status: "QUEUED" | "PROCESSED";
+}
+
+export interface Validator {
+  pubkey: string;
+  withdrawal_credentials: string;
+  amount: number;
+  signature: string;
+  deposit_message_root: string;
+  region?: "US" | "AU";
+  deposit_data_root: string;
+  fork_version: string;
+  network_name: string;
+  deposit_cli_version: string;
+  status: string;
+  suggestedFeeRecipient: string;
+  validatorIndex: number;
+  statusLastChecked: string;
+  balanceGwei: string;
+  effectiveBalanceGwei: string;
+  /** Stake Object ID from database */
+  stakeOid?: string;
+  /** Stake ID */
+  stakeId?: number;
+  /** Withdrawal address for the validator */
+  withdrawalAddress?: string;
+  deposits?: ValidatorDeposit[];
+  withdrawals?: ValidatorWithdrawal[];
+  consolidations?: ValidatorConsolidation[];
+}
+
+export interface StakeDetailsWithValidators {
+  stakeId: number;
+  customerId: number;
+  /** @format date-time */
+  createdAt?: string;
+  reference: string;
+  region?: "US" | "AU";
+  label: string;
+  withdrawalAddress: string;
+  suggestedFeeRecipient: string;
+  validatorStartIndex: number;
+  validatorCount: number;
+  status: string;
+  message: string;
+  /** Stake history entries */
+  history?: object[];
+  validators: Validator[];
+}
+
 export interface SimulationLog {
   /**
    * Event name (if decoded)
@@ -545,52 +611,6 @@ export interface TransactionAnalysis {
   observations: TransactionAnalysisObservation[];
 }
 
-export interface Validator {
-  pubkey: string;
-  withdrawal_credentials: string;
-  amount: number;
-  signature: string;
-  deposit_message_root: string;
-  region?: "US" | "AU";
-  deposit_data_root: string;
-  fork_version: string;
-  network_name: string;
-  deposit_cli_version: string;
-  status: string;
-  suggestedFeeRecipient: string;
-  validatorIndex: number;
-  statusLastChecked: string;
-  balanceGwei: string;
-  effectiveBalanceGwei: string;
-  /** Stake Object ID from database */
-  stakeOid?: string;
-  /** Stake ID */
-  stakeId?: number;
-  /** Withdrawal address for the validator */
-  withdrawalAddress?: string;
-  /** Transaction analysis data */
-  analysis?: TransactionAnalysis;
-}
-
-export interface StakeDetailsWithValidators {
-  stakeId: number;
-  customerId: number;
-  /** @format date-time */
-  createdAt?: string;
-  reference: string;
-  region?: "US" | "AU";
-  label: string;
-  withdrawalAddress: string;
-  suggestedFeeRecipient: string;
-  validatorStartIndex: number;
-  validatorCount: number;
-  status: string;
-  message: string;
-  /** Stake history entries */
-  history?: object[];
-  validators: Validator[];
-}
-
 export interface EthereumTransactionCraftingWithAnalysisResponse {
   /**
    * target contract address
@@ -754,8 +774,9 @@ export interface ValidatorWithStakeDetails {
   stakeId?: number;
   /** Withdrawal address for the validator */
   withdrawalAddress?: string;
-  /** Transaction analysis data */
-  analysis?: TransactionAnalysis;
+  deposits?: ValidatorDeposit[];
+  withdrawals?: ValidatorWithdrawal[];
+  consolidations?: ValidatorConsolidation[];
   reference: string;
   label: string;
 }
@@ -795,18 +816,13 @@ export interface EstimatedWithdrawalTimes {
   validation: string;
   expectedExitEpoch: number;
   expectedFullWithdrawalEligibilityEpoch: number;
-  predictedUpcomingWithdrawalEpoch: number;
+  predictedWithdrawalEpoch: number;
   predictedExitSubmissionDeadlineEpoch: number;
 }
 
 export interface EstimateWithdrawalTimesDto {
   /** @example [1142356] */
   validatorIndexes: number[];
-}
-
-export interface ValidatorDeposit {
-  pubkey: string;
-  amountGwei: string;
 }
 
 export interface GenerateDepositDataDto {
@@ -2896,7 +2912,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Pier Two Staking API
- * @version 1.0.116-main-mainnet
+ * @version 1.0.118-main-mainnet
  * @baseUrl https://gw-1.api.piertwo.io
  * @contact
  *
