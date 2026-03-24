@@ -27,6 +27,8 @@ export interface GetAccountResponse {
   customerName: string;
   /** @example "Pier Two" */
   companyName: string;
+  /** @example "completed" */
+  onboardingStatus?: "completed" | "skipped" | "pending";
   /** @example "staking@piertwo.com" */
   emailAddress: string;
   /**
@@ -59,6 +61,54 @@ export interface ApiRoles {
   staker?: boolean;
   /** Read-only access across all staking networks */
   reader?: boolean;
+}
+
+export interface AccessibleAccountResponse {
+  /** @example 42 */
+  customerId: number;
+  /** @example "staking@piertwo.com" */
+  emailAddress: string;
+  /** @example "Pier Two" */
+  companyName: string;
+  /** @example "Pierre Toosen" */
+  customerName: string;
+  roles: ApiRoles;
+}
+
+export interface OnboardingResponseDto {
+  /**
+   * Customer name (full name)
+   * @example "Satoshi Nakamoto"
+   */
+  customerName?: string;
+  /**
+   * Company name
+   * @example "Bitcoin Foundation"
+   */
+  companyName?: string;
+  /**
+   * Onboarding status
+   * @example "completed"
+   */
+  onboardingStatus?: "completed" | "skipped" | "pending";
+}
+
+export interface OnboardingRequestDto {
+  /**
+   * Customer name (full name)
+   * @example "Satoshi Nakamoto"
+   */
+  customerName?: string;
+  /**
+   * Company name
+   * @example "Bitcoin Foundation"
+   */
+  companyName?: string;
+  /**
+   * Onboarding status
+   * @example "completed"
+   */
+  onboardingStatus: "completed" | "skipped" | "pending";
 }
 
 export interface IpRestrictionDto {
@@ -272,6 +322,89 @@ export interface CreateStakeDto {
    * @example "AU"
    */
   region?: "US" | "AU";
+}
+
+export interface ValidatorDeposit {
+  amount: number;
+  slot: number;
+  status: "QUEUED" | "PROCESSED";
+}
+
+export interface ValidatorWithdrawal {
+  amount: number;
+  withdrawableEpoch: number;
+  status: "QUEUED" | "PROCESSED";
+}
+
+export interface ValidatorConsolidation {
+  amount: number;
+  targetPubkey: string;
+  sourcePubkey: string;
+  status: "QUEUED" | "PROCESSED";
+}
+
+export interface PendingIncoming {
+  /** Number of active consolidations targeting this validator */
+  activeCount: number;
+  /** Total incoming amount in Gwei from pending consolidations */
+  totalIncomingGwei: string;
+}
+
+export interface Validator {
+  pubkey: string;
+  withdrawal_credentials: string;
+  amount: number;
+  signature: string;
+  deposit_message_root: string;
+  region?: "US" | "AU";
+  deposit_data_root: string;
+  fork_version: string;
+  network_name: string;
+  deposit_cli_version: string;
+  status: string;
+  suggestedFeeRecipient: string;
+  validatorIndex: number;
+  statusLastChecked: string;
+  balanceGwei: string;
+  effectiveBalanceGwei: string;
+  /** Stake Object ID from database */
+  stakeOid?: string;
+  /** Stake ID */
+  stakeId?: number;
+  /** Withdrawal address for the validator */
+  withdrawalAddress?: string;
+  deposits?: ValidatorDeposit[];
+  withdrawals?: ValidatorWithdrawal[];
+  consolidations?: ValidatorConsolidation[];
+  /** Epoch when validator became active */
+  activationEpoch?: number;
+  /** Epoch when sum of validator deposits reached the minimum activation balance */
+  activationEligibilityEpoch?: number;
+  /** Epoch when validator was exited */
+  exitEpoch?: number;
+  /** Epoch when validator balance became withdrawable after exit */
+  withdrawableEpoch?: number;
+  /** Pending incoming consolidation amounts for this validator */
+  pendingIncoming?: PendingIncoming;
+}
+
+export interface StakeDetailsWithValidators {
+  stakeId: number;
+  customerId: number;
+  /** @format date-time */
+  createdAt?: string;
+  reference: string;
+  region?: "US" | "AU";
+  label: string;
+  withdrawalAddress: string;
+  suggestedFeeRecipient: string;
+  validatorStartIndex: number;
+  validatorCount: number;
+  status: string;
+  message: string;
+  /** Stake history entries */
+  history?: object[];
+  validators: Validator[];
 }
 
 export interface SimulationLog {
@@ -545,52 +678,6 @@ export interface TransactionAnalysis {
   observations: TransactionAnalysisObservation[];
 }
 
-export interface Validator {
-  pubkey: string;
-  withdrawal_credentials: string;
-  amount: number;
-  signature: string;
-  deposit_message_root: string;
-  region?: "US" | "AU";
-  deposit_data_root: string;
-  fork_version: string;
-  network_name: string;
-  deposit_cli_version: string;
-  status: string;
-  suggestedFeeRecipient: string;
-  validatorIndex: number;
-  statusLastChecked: string;
-  balanceGwei: string;
-  effectiveBalanceGwei: string;
-  /** Stake Object ID from database */
-  stakeOid?: string;
-  /** Stake ID */
-  stakeId?: number;
-  /** Withdrawal address for the validator */
-  withdrawalAddress?: string;
-  /** Transaction analysis data */
-  analysis?: TransactionAnalysis;
-}
-
-export interface StakeDetailsWithValidators {
-  stakeId: number;
-  customerId: number;
-  /** @format date-time */
-  createdAt?: string;
-  reference: string;
-  region?: "US" | "AU";
-  label: string;
-  withdrawalAddress: string;
-  suggestedFeeRecipient: string;
-  validatorStartIndex: number;
-  validatorCount: number;
-  status: string;
-  message: string;
-  /** Stake history entries */
-  history?: object[];
-  validators: Validator[];
-}
-
 export interface EthereumTransactionCraftingWithAnalysisResponse {
   /**
    * target contract address
@@ -695,6 +782,167 @@ export interface CreateStakePectraDto {
   fromAddress?: string;
 }
 
+export interface AddTrackedWithdrawalAddressDto {
+  /**
+   * The withdrawal address to track
+   * @example "0x1234567890123456789012345678901234567890"
+   */
+  withdrawalAddress: string;
+  /**
+   * The customer ID to associate with this withdrawal address
+   * @example 1
+   */
+  customerId?: number;
+  /**
+   * Label for the tracked address
+   * @example "External Validators"
+   */
+  label?: string;
+  /**
+   * Custodian name for the tracked address
+   * @example "BitGo"
+   */
+  custodian?: string;
+  /**
+   * Reference for grouping validators
+   * @example "External Import"
+   */
+  reference?: string;
+  /**
+   * Whether tracking is active
+   * @example true
+   */
+  isActive?: boolean;
+}
+
+export interface TrackedWithdrawalAddressResponseDto {
+  /**
+   * The withdrawal address being tracked
+   * @example "0x1234567890123456789012345678901234567890"
+   */
+  withdrawalAddress: string;
+  /**
+   * Customer ID associated with this tracked address
+   * @example 1
+   */
+  customerId: number;
+  /**
+   * Label for this tracked address
+   * @example "My External Validators"
+   */
+  label?: string;
+  /**
+   * Custodian name for this address
+   * @example "BitGo"
+   */
+  custodian?: string;
+  /**
+   * Reference for this tracked address
+   * @example "External Import"
+   */
+  reference?: string;
+  /**
+   * Whether this tracked address is active
+   * @example true
+   */
+  isActive: boolean;
+  /**
+   * Last time validators were synced for this address
+   * @format date-time
+   * @example "2024-01-15T10:30:00.000Z"
+   */
+  lastSyncedAt?: string;
+  /**
+   * Error message from last sync attempt if any
+   * @example null
+   */
+  lastSyncError?: string;
+  /**
+   * Number of validators found for this address
+   * @example 5
+   */
+  validatorCount?: number;
+  /**
+   * When this tracked address was created
+   * @format date-time
+   * @example "2024-01-15T10:30:00.000Z"
+   */
+  createdAt: string;
+  /**
+   * When this tracked address was last updated
+   * @format date-time
+   * @example "2024-01-15T10:30:00.000Z"
+   */
+  updatedAt: string;
+  /**
+   * Total staked ETH in wei for validators using this withdrawal address (internal + external)
+   * @example "32000000000000000000"
+   */
+  stakedWei?: string;
+  /**
+   * Idle ETH balance in wei held by this wallet on-chain
+   * @example "1500000000000000000"
+   */
+  idleWei?: string;
+  /**
+   * Total ETH in wei (staked + idle)
+   * @example "33500000000000000000"
+   */
+  totalWei?: string;
+}
+
+export interface CustodiansResponseDto {
+  /**
+   * List of unique custodian names from tracked withdrawal addresses
+   * @example ["BitGo","Coinbase","Fireblocks"]
+   */
+  custodians: string[];
+}
+
+export interface DeleteTrackedAddressResultDto {
+  /**
+   * Whether the address was successfully deleted/deactivated
+   * @example true
+   */
+  deleted: boolean;
+  /**
+   * The withdrawal address that was processed
+   * @example "0x1234567890123456789012345678901234567890"
+   */
+  withdrawalAddress: string;
+}
+
+export interface DeleteTrackedWithdrawalAddressesDto {
+  /**
+   * Withdrawal addresses to remove from tracking
+   * @example ["0x1234567890123456789012345678901234567890","0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"]
+   */
+  addresses: string[];
+}
+
+export interface UntrackedKnownAddressDto {
+  /**
+   * The wallet address
+   * @example "0x1234567890123456789012345678901234567890"
+   */
+  address: string;
+  /**
+   * Description of how this address is known (e.g., withdrawal address, fee recipient)
+   * @example "withdrawal address"
+   */
+  description: string;
+  /**
+   * Total staked ETH in wei for validators using this address
+   * @example "32000000000000000000"
+   */
+  stakedWei: string;
+  /**
+   * Idle ETH balance in wei in this wallet
+   * @example "1500000000000000000"
+   */
+  idleWei: string;
+}
+
 export interface DataWithMessage {
   message: string;
 }
@@ -754,8 +1002,19 @@ export interface ValidatorWithStakeDetails {
   stakeId?: number;
   /** Withdrawal address for the validator */
   withdrawalAddress?: string;
-  /** Transaction analysis data */
-  analysis?: TransactionAnalysis;
+  deposits?: ValidatorDeposit[];
+  withdrawals?: ValidatorWithdrawal[];
+  consolidations?: ValidatorConsolidation[];
+  /** Epoch when validator became active */
+  activationEpoch?: number;
+  /** Epoch when sum of validator deposits reached the minimum activation balance */
+  activationEligibilityEpoch?: number;
+  /** Epoch when validator was exited */
+  exitEpoch?: number;
+  /** Epoch when validator balance became withdrawable after exit */
+  withdrawableEpoch?: number;
+  /** Pending incoming consolidation amounts for this validator */
+  pendingIncoming?: PendingIncoming;
   reference: string;
   label: string;
 }
@@ -795,7 +1054,7 @@ export interface EstimatedWithdrawalTimes {
   validation: string;
   expectedExitEpoch: number;
   expectedFullWithdrawalEligibilityEpoch: number;
-  predictedUpcomingWithdrawalEpoch: number;
+  predictedWithdrawalEpoch: number;
   predictedExitSubmissionDeadlineEpoch: number;
 }
 
@@ -804,14 +1063,14 @@ export interface EstimateWithdrawalTimesDto {
   validatorIndexes: number[];
 }
 
-export interface ValidatorDeposit {
-  pubkey: string;
-  amountGwei: string;
-}
-
 export interface GenerateDepositDataDto {
   /** @example [{"pubkey":"a20d2ba70419cb3922985488e339736ab32e6184f11708d2333f65b14f70cf47365b538c32eff237cdaf293ea2bcfb03","amountGwei":"1000000000"}] */
   deposits: ValidatorDeposit[];
+  /**
+   * Withdrawal credentials type (leave empty or pass `0x01` for Shapella, `0x02` for Pectra)
+   * @example "0x02"
+   */
+  credentialsType?: "0x01" | "0x02";
 }
 
 export interface EthereumValidatorTopupDto {
@@ -1019,6 +1278,18 @@ export interface ValidatorDailyRewardDto {
   consensusRewards: string;
   executionRewards: string;
   ethPrice: number;
+  /** The start epoch of the consensus rewards. Only available for v2 */
+  consensusStartEpoch?: number;
+  /** The end epoch of the consensus rewards. Only available for v2 */
+  consensusEndEpoch?: number;
+  /** The number of epochs of consensus rewardsobserved for the day. Only available for v2 */
+  consensusEpochsObserved?: number;
+  /** The first epoch in the day where an execution reward was earned. Only available for v2 */
+  executionStartEpoch?: number;
+  /** The last epoch in the day where an execution reward was earned. Only available for v2 */
+  executionEndEpoch?: number;
+  /** The number of blocks won for the day. Only available for v2 */
+  executionBlocksWon?: number;
 }
 
 export interface ValidatorPerformance {
@@ -1067,6 +1338,154 @@ export interface CustomerDashboard {
   accounts: CustomerDashboardAccount[];
 }
 
+export interface StakedBreakdown {
+  /**
+   * Total staked ETH in wei (PierTwo + External)
+   * @example "6000000000000000000"
+   */
+  totalWei: string;
+  /**
+   * PierTwo staked ETH in wei
+   * @example "4000000000000000000"
+   */
+  pierTwoWei: string;
+  /**
+   * External staked ETH in wei
+   * @example "2000000000000000000"
+   */
+  externalWei: string;
+}
+
+export interface WalletsDashboardSummary {
+  /**
+   * Total number of wallet custodians
+   * @example 4
+   */
+  totalCustodians: number;
+  /**
+   * Total number of addresses
+   * @example 22
+   */
+  totalAddresses: number;
+  /** Global staked breakdown */
+  staked: StakedBreakdown;
+  /**
+   * Total idle ETH in wei
+   * @example "2123000000000000000000"
+   */
+  idleWei: string;
+}
+
+export interface WalletCustodian {
+  /**
+   * Wallet custodian name
+   * @example "BitGo"
+   */
+  custodian: string;
+  /**
+   * Percentage of total value
+   * @example 30
+   */
+  percentage: number;
+  /**
+   * Number of addresses for this custodian
+   * @example 7
+   */
+  addressCount: number;
+  /**
+   * Total ETH value in wei
+   * @example "1234000000000000000000"
+   */
+  totalWei: string;
+  /** Staked ETH breakdown */
+  staked: StakedBreakdown;
+  /**
+   * Idle ETH in wei
+   * @example "734000000000000000000"
+   */
+  idleWei: string;
+}
+
+export interface ValidatorApr {
+  /**
+   * Validator index
+   * @example 12345
+   */
+  validatorIndex: number;
+  /**
+   * Total APR percentage for this validator (consensus + execution)
+   * @example 2.5
+   */
+  apr: number;
+  /**
+   * Consensus layer APR percentage (attestations, sync committees)
+   * @example 1.8
+   */
+  consensusApr: number;
+  /**
+   * Execution layer APR percentage (block proposals, MEV)
+   * @example 0.7
+   */
+  executionApr: number;
+}
+
+export interface ValidatorGroupApr {
+  /**
+   * Overall APR percentage for the validator group
+   * @example 2.5
+   */
+  apr: number;
+  /** Individual validator APRs for this day */
+  validators: ValidatorApr[];
+}
+
+export interface AprDataPoint {
+  /**
+   * Timestamp for this data point (Unix timestamp in seconds)
+   * @example 1694736000
+   */
+  timestamp: number;
+  /** APR data for PierTwo validators */
+  pierTwo: ValidatorGroupApr;
+  /** APR data for External validators */
+  external: ValidatorGroupApr;
+  /**
+   * CESR APR as decimal (network benchmark, e.g. 0.028 = 2.8%)
+   * @example 0.022
+   */
+  cesr: number;
+}
+
+export interface AprComparisonResponse {
+  /** Array of APR data points over time. Each point represents a complete day of data. */
+  dataPoints: AprDataPoint[];
+  /**
+   * Time range used for the data
+   * @example "1Y"
+   */
+  timeRange: "1Y" | "1M" | "1W";
+  /**
+   * Start of the data period (Unix timestamp in seconds, midnight UTC)
+   * @example 1694736000
+   */
+  periodStart: number;
+  /**
+   * End of the data period (Unix timestamp in seconds, midnight UTC of last complete day)
+   * @example 1695340800
+   */
+  periodEnd: number;
+  /**
+   * Whether the current (today) day is excluded from the data. Always true since today has incomplete income data.
+   * @example true
+   */
+  excludesToday: boolean;
+}
+
+export interface WalletsDashboard {
+  summary: WalletsDashboardSummary;
+  custodians: WalletCustodian[];
+}
+
 export interface CustomerAccountStake {
   stakeId: number;
   name: string;
@@ -1092,6 +1511,246 @@ export interface ValidatorIncomeHistory {
   /** @format date-time */
   timestampEnd: string;
   totalIncomeWei: string;
+}
+
+export interface BeaconChainValidatorDto {
+  /**
+   * Epoch when validator became eligible for activation
+   * @example 0
+   */
+  activationeligibilityepoch: number;
+  /**
+   * Epoch when validator was activated
+   * @example 0
+   */
+  activationepoch: number;
+  /**
+   * Current balance in Gwei
+   * @example 32465446692
+   */
+  balance: number;
+  /**
+   * Effective balance in Gwei (used for rewards calculation)
+   * @example 32000000000
+   */
+  effectivebalance: number;
+  /**
+   * Epoch when validator will exit (max value if not exiting)
+   * @example 9223372036854776000
+   */
+  exitepoch: number;
+  /**
+   * Last slot where validator attested
+   * @example 1920547
+   */
+  lastattestationslot: number;
+  /**
+   * Validator name/label
+   * @example "nimbus"
+   */
+  name: string;
+  /**
+   * Validator public key
+   * @example "0x80000924ccc68dd017bb3d2dc85c6d3c87a28d140907f546467bb4528b0441357e7704ebebcac9e4876e5b7bb3a96c4a"
+   */
+  pubkey: string;
+  /**
+   * Whether validator has been slashed
+   * @example false
+   */
+  slashed: boolean;
+  /**
+   * Current validator status
+   * @example "active_online"
+   */
+  status:
+    | "pending"
+    | "active_online"
+    | "active_ongoing"
+    | "active_offline"
+    | "slashing_online"
+    | "slashing_offline"
+    | "slashed"
+    | "exiting_online"
+    | "exiting_offline"
+    | "exited"
+    | "deposited";
+  /**
+   * Validator index on the beacon chain
+   * @example 490443
+   */
+  validatorindex: number;
+  /**
+   * Epoch when validator balance becomes withdrawable
+   * @example 9223372036854776000
+   */
+  withdrawableepoch: number;
+  /**
+   * Withdrawal credentials
+   * @example "0x0044557f80ee2e70f48c3466c281bf6cd01add9a0a2e5f8936c4cf4292c1dbc0"
+   */
+  withdrawalcredentials: string;
+  /**
+   * Total number of withdrawals
+   * @example 0
+   */
+  total_withdrawals: number;
+}
+
+export interface AddExternalValidatorForCustomerDto {
+  /** @example "0xb8a5206982b6544a31e4574415bff1da9d849f64a7782cdc0c6bc31c2575c90a24712867e7987f76df1c2c33b6cda615" */
+  pubkey: string;
+  /** @example "Imported Validators" */
+  reference: string;
+  /** @example "Validator 1035298" */
+  label: string;
+  /** @example "ACTIVE" */
+  status: string;
+  /** @example "0x0000000000000000000000000000000000000000" */
+  withdrawalAddress: string;
+  /** @example "0x0000000000000000000000000000000000000000" */
+  suggestedFeeRecipient: string;
+  /** @example "0" */
+  balanceGwei: string;
+  /** @example "0" */
+  effectiveBalanceGwei: string;
+  /** @example 1 */
+  validatorIndex: string;
+}
+
+export interface GetValidatorsByWithdrawalAddressResponseDto {
+  /** Array of validators associated with the withdrawal address */
+  validators: {
+    /** The public key of the validator */
+    publickey?: string;
+    /** The validator index */
+    validatorindex?: number;
+  }[];
+  /** Total number of validators found */
+  total: number;
+  /** The withdrawal address that was queried */
+  withdrawalAddress: string;
+}
+
+export interface ExistingConsolidationDto {
+  /**
+   * Target validator public key of the existing consolidation
+   * @example "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+   */
+  targetPubkey: string;
+  /**
+   * Status of the existing consolidation
+   * @example "PENDING"
+   */
+  status: string;
+}
+
+export interface ValidationErrorDto {
+  /**
+   * Error code indicating the type of validation failure
+   * @example "SOURCE_IN_USE"
+   */
+  code:
+    | "SOURCE_IN_USE"
+    | "TARGET_AS_SOURCE"
+    | "MAX_BALANCE_EXCEEDED"
+    | "VALIDATOR_NOT_FOUND"
+    | "INVALID_CUSTOMER";
+  /**
+   * Human-readable error message
+   * @example "Source validator is already being used in another consolidation"
+   */
+  message: string;
+  /**
+   * Public key of the validator that caused the error
+   * @example "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   */
+  pubkey?: string;
+  /** Details of the existing consolidation (when SOURCE_IN_USE error) */
+  existingConsolidation?: ExistingConsolidationDto;
+  /**
+   * Target public key (when TARGET_AS_SOURCE error)
+   * @example "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+   */
+  targetPubkey?: string;
+  /**
+   * Current balance of the target validator in Gwei
+   * @example "32000000000"
+   */
+  currentBalanceGwei?: string;
+  /**
+   * Pending incoming balance to the target validator in Gwei
+   * @example "1000000000"
+   */
+  pendingIncomingGwei?: string;
+  /**
+   * Requested consolidation amount in Gwei
+   * @example "32000000000"
+   */
+  requestedAmountGwei?: string;
+  /**
+   * Maximum allowed balance for a validator in Gwei
+   * @example "2048000000000"
+   */
+  maxBalanceGwei?: string;
+}
+
+export interface TargetValidatorDto {
+  /**
+   * Target validator public key (BLS12-381)
+   * @example "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+   */
+  pubkey: string;
+  /**
+   * Current balance of the target validator in Gwei
+   * @example "32000000000"
+   */
+  currentBalanceGwei: string;
+  /**
+   * Sum of all pending incoming consolidations to this validator in Gwei
+   * @example "5000000000"
+   */
+  pendingIncomingGwei: string;
+  /**
+   * Projected balance after all consolidations complete (current + pending + requested) in Gwei
+   * @example "69000000000"
+   */
+  projectedBalanceGwei: string;
+}
+
+export interface ValidateConsolidationResponseDto {
+  /**
+   * Whether the consolidation request is valid and can be executed
+   * @example true
+   */
+  valid: boolean;
+  /** List of validation errors (only present when valid is false) */
+  errors?: ValidationErrorDto[];
+  /** Target validator details including projected balance after consolidation */
+  targetValidator?: TargetValidatorDto;
+}
+
+export interface SourceValidatorDto {
+  /**
+   * BLS12-381 public key (0x + 96 hex characters)
+   * @example "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   */
+  pubkey: string;
+  /**
+   * Amount to consolidate in Gwei
+   * @example "32000000000"
+   */
+  amountGwei: string;
+}
+
+export interface ValidateConsolidationRequestDto {
+  /** Array of source validators to consolidate from */
+  sources: SourceValidatorDto[];
+  /**
+   * Target validator public key (BLS12-381)
+   * @example "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+   */
+  targetPubkey: string;
 }
 
 export interface BitcoinUtxoStatus {
@@ -1745,6 +2404,112 @@ export interface FinalizeBabylonPreStakeDto {
   signedStakingTx: string;
 }
 
+export interface ActivityHistoryItem {
+  /**
+   * Transaction date
+   * @format date-time
+   * @example "2024-01-15T10:30:00Z"
+   */
+  date: string;
+  /**
+   * Transaction value
+   * @example "32000"
+   */
+  value: object;
+  /**
+   * Blockchain network
+   * @example "ethereum"
+   */
+  blockchain: "ethereum" | "solana";
+  /** Additional metadata */
+  metadata?: object;
+}
+
+export interface WebsiteDataPrices {
+  solPrice: number;
+  ethPrice: number;
+  nearPrice: number;
+  tonPrice: number;
+  polPrice: number;
+  eigenPrice: number;
+}
+
+export interface WebsiteDataAssetsUnderStake {
+  sol: number;
+  eth: number;
+  near: number;
+  ton: number;
+  pol: number;
+  eigen: number;
+}
+
+export interface WebsiteData {
+  prices: WebsiteDataPrices;
+  assetsUnderStake: WebsiteDataAssetsUnderStake;
+}
+
+export interface PierTwoEigenLayerInfo {
+  operatorAddress: string;
+  eigenPodManagerAddress: string;
+}
+
+export interface PierTwoEthereumInfo {
+  batchDepositContractAddress: string;
+  pectraBatchDepositContractAddress: string;
+  beaconDepositContractAddress: string;
+  ethValidatorWithdrawalContractAddress: string;
+  ethValidatorConsolidationContractAddress: string;
+  eigenlayer: PierTwoEigenLayerInfo;
+  currentEpoch: number;
+  pectraForkEpoch: number;
+  network: string;
+  chainId: number;
+  validatorMaxEBGwei: number;
+  validatorMinEBGwei: number;
+}
+
+export interface PierTwoSolanaInfo {
+  voteAccountAddress: string;
+  network: string;
+}
+
+export interface PierTwoBitcoinInfo {
+  finalityProviderPK: string;
+  bitcoinNetwork: string;
+  babylonNetwork: string;
+  babylonChainId: string;
+}
+
+export interface PierTwoCardanoInfo {
+  network: string;
+  defaultPoolId: string;
+}
+
+export interface PierTwoInfo {
+  ethereum: PierTwoEthereumInfo;
+  solana: PierTwoSolanaInfo;
+  bitcoin: PierTwoBitcoinInfo;
+  cardano: PierTwoCardanoInfo;
+}
+
+export interface SystemInfoResponse {
+  /**
+   * Version of the API Gateway service
+   * @example "1.0.0"
+   */
+  apiGatewayVersion: string;
+  /**
+   * Version of the internal Ethereum staking API for AU region
+   * @example "1.0.0"
+   */
+  auEthStakingApiVersion: string;
+  /**
+   * Version of the internal Ethereum staking API for US region
+   * @example "1.0.0"
+   */
+  usEthStakingApiVersion: string;
+}
+
 export interface CardanoStakeAccount {
   stakeAccountAddress: string;
   poolId: string;
@@ -2012,91 +2777,6 @@ export interface CardanoTransactionStatusResponse {
    * @example 1000000
    */
   fees: string;
-}
-
-export interface WebsiteDataPrices {
-  solPrice: number;
-  ethPrice: number;
-  nearPrice: number;
-  tonPrice: number;
-  polPrice: number;
-  eigenPrice: number;
-}
-
-export interface WebsiteDataAssetsUnderStake {
-  sol: number;
-  eth: number;
-  near: number;
-  ton: number;
-  pol: number;
-  eigen: number;
-}
-
-export interface WebsiteData {
-  prices: WebsiteDataPrices;
-  assetsUnderStake: WebsiteDataAssetsUnderStake;
-}
-
-export interface PierTwoEigenLayerInfo {
-  operatorAddress: string;
-  eigenPodManagerAddress: string;
-}
-
-export interface PierTwoEthereumInfo {
-  batchDepositContractAddress: string;
-  pectraBatchDepositContractAddress: string;
-  beaconDepositContractAddress: string;
-  ethValidatorWithdrawalContractAddress: string;
-  ethValidatorConsolidationContractAddress: string;
-  eigenlayer: PierTwoEigenLayerInfo;
-  currentEpoch: number;
-  pectraForkEpoch: number;
-  network: string;
-  chainId: number;
-  validatorMaxEBGwei: number;
-  validatorMinEBGwei: number;
-}
-
-export interface PierTwoSolanaInfo {
-  voteAccountAddress: string;
-  network: string;
-}
-
-export interface PierTwoBitcoinInfo {
-  finalityProviderPK: string;
-  bitcoinNetwork: string;
-  babylonNetwork: string;
-  babylonChainId: string;
-}
-
-export interface PierTwoCardanoInfo {
-  network: string;
-  defaultPoolId: string;
-}
-
-export interface PierTwoInfo {
-  ethereum: PierTwoEthereumInfo;
-  solana: PierTwoSolanaInfo;
-  bitcoin: PierTwoBitcoinInfo;
-  cardano: PierTwoCardanoInfo;
-}
-
-export interface SystemInfoResponse {
-  /**
-   * Version of the API Gateway service
-   * @example "1.0.0"
-   */
-  apiGatewayVersion: string;
-  /**
-   * Version of the internal Ethereum staking API for AU region
-   * @example "1.0.0"
-   */
-  auEthStakingApiVersion: string;
-  /**
-   * Version of the internal Ethereum staking API for US region
-   * @example "1.0.0"
-   */
-  usEthStakingApiVersion: string;
 }
 
 export interface RegisterLsEthResponse {
@@ -2896,7 +3576,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Pier Two Staking API
- * @version 1.0.116-main-mainnet
+ * @version 1.0.151-main-mainnet
  * @baseUrl https://gw-1.api.piertwo.io
  * @contact
  *
@@ -2923,6 +3603,53 @@ export class Api<
       >({
         path: `/account`,
         method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns all accounts accessible to the logged-in email via direct ownership or authorizedLogins membership.
+     *
+     * @tags Account
+     * @name GetAccessibleAccounts
+     * @summary Get accessible accounts
+     * @request GET:/account/accessibleAccounts
+     */
+    getAccessibleAccounts: (params: RequestParams = {}) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: AccessibleAccountResponse[];
+        },
+        any
+      >({
+        path: `/account/accessibleAccounts`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Complete account onboarding by providing user details and onboarding status
+     *
+     * @tags Account
+     * @name CompleteOnboarding
+     * @summary Complete onboarding
+     * @request POST:/account/onboarding
+     */
+    completeOnboarding: (
+      data: OnboardingRequestDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: OnboardingResponseDto;
+        },
+        any
+      >({
+        path: `/account/onboarding`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -3007,7 +3734,13 @@ export class Api<
      * @summary Get account summary
      * @request GET:/account/summary
      */
-    getAccountSummary: (params: RequestParams = {}) =>
+    getAccountSummary: (
+      query?: {
+        /** Skip fetching Solana address balances for faster response (default: false) */
+        skipSolanaBalances?: boolean;
+      },
+      params: RequestParams = {},
+    ) =>
       this.request<
         UtilRequiredKeys<ApiResponseBase, "data"> & {
           data: CustomerSummary;
@@ -3016,6 +3749,7 @@ export class Api<
       >({
         path: `/account/summary`,
         method: "GET",
+        query: query,
         format: "json",
         ...params,
       }),
@@ -3362,6 +4096,130 @@ export class Api<
       }),
 
     /**
+     * @description Adds one or more withdrawal addresses that will be automatically monitored. Accepts either a single address object or an array of addresses. Any validators with these withdrawal addresses will be automatically added as external validators for the authenticated customer.
+     *
+     * @tags Ethereum
+     * @name AddTrackedWithdrawalAddress
+     * @summary Add withdrawal address(es) to track for automatic external validator sync
+     * @request POST:/ethereum/trackedWithdrawalAddresses
+     */
+    addTrackedWithdrawalAddress: (
+      data: AddTrackedWithdrawalAddressDto | AddTrackedWithdrawalAddressDto[],
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data:
+            | TrackedWithdrawalAddressResponseDto
+            | TrackedWithdrawalAddressResponseDto[];
+        },
+        any
+      >({
+        path: `/ethereum/trackedWithdrawalAddresses`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns a list of all withdrawal addresses being tracked for automatic sync for the authenticated customer. Pass includeBalances=true to also return per-address stakedWei, idleWei, and totalWei.
+     *
+     * @tags Ethereum
+     * @name GetTrackedWithdrawalAddresses
+     * @summary Get all tracked withdrawal addresses for the current customer
+     * @request GET:/ethereum/trackedWithdrawalAddresses
+     */
+    getTrackedWithdrawalAddresses: (
+      query?: {
+        /** When true, enrich each address with stakedWei, idleWei, and totalWei. Defaults to false. */
+        includeBalances?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: TrackedWithdrawalAddressResponseDto[];
+        },
+        any
+      >({
+        path: `/ethereum/trackedWithdrawalAddresses`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Removes one or more withdrawal addresses from tracking. This will stop automatic syncing of validators associated with these withdrawal addresses.
+     *
+     * @tags Ethereum
+     * @name RemoveTrackedWithdrawalAddress
+     * @summary Remove withdrawal address(es) from tracking for automatic external validator sync
+     * @request DELETE:/ethereum/trackedWithdrawalAddresses
+     */
+    removeTrackedWithdrawalAddress: (
+      data: DeleteTrackedWithdrawalAddressesDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: DeleteTrackedAddressResultDto[];
+        },
+        any
+      >({
+        path: `/ethereum/trackedWithdrawalAddresses`,
+        method: "DELETE",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns a list of unique custodian names from tracked withdrawal addresses for the authenticated customer.
+     *
+     * @tags Ethereum
+     * @name GetTrackedWithdrawalAddressCustodians
+     * @summary Get all custodian names for the current customer
+     * @request GET:/ethereum/trackedWithdrawalAddresses/custodians
+     */
+    getTrackedWithdrawalAddressCustodians: (params: RequestParams = {}) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: CustodiansResponseDto;
+        },
+        any
+      >({
+        path: `/ethereum/trackedWithdrawalAddresses/custodians`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns a list of wallet addresses from stakes and validators that are known to the system but not yet being tracked. Includes staked balance and idle (wallet) balance for each address.
+     *
+     * @tags Ethereum
+     * @name GetUntrackedKnownAddresses
+     * @summary Get known wallet addresses that are not yet tracked
+     * @request GET:/ethereum/untrackedKnownAddresses
+     */
+    getUntrackedKnownAddresses: (params: RequestParams = {}) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: UntrackedKnownAddressDto[];
+        },
+        any
+      >({
+        path: `/ethereum/untrackedKnownAddresses`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Abandon stake request and all associated validators.
      *
      * @tags Ethereum
@@ -3619,7 +4477,7 @@ export class Api<
       }),
 
     /**
-     * @description By default, validator records are populated with deposit transaction data suitable for deposits of 32ETH. This endpoint can be used in situations where you want to perform deposits of amounts other than 32ETH. This will generate the deposit transaction data for one or more validators corresponding to the amount(s) specified in the request body. ***Note that this will not replace nor invalidate the deposit data that is stored on the validator records themselves*** This endpoint will return an error in the following situations: - an invalid amount is specified (<= 0 or > 32000000000) - one or more of the specified validators is not in a WAITING_DEPOSIT state - one or more validators is not associated your account - the list of specified validators contains duplicate pubkeys
+     * @description Generate deposit transaction data (including signature) for one or more validators corresponding to the amount(s) specified in the request body. ***Note that this will not replace nor invalidate the deposit data that is already stored on existing validator records*** This endpoint will return an error in the following situations: - an invalid amount is specified (<= 0 or > 32000000000, up to 2048000000000 for Pectra) - one or more of the specified validators is not in a WAITING_DEPOSIT state - one or more validators is not associated your account - the list of specified validators contains duplicate pubkeys
      *
      * @tags Ethereum
      * @name GenerateEthereumDepositData
@@ -3871,6 +4729,11 @@ export class Api<
         waitForDataSync?: string;
         /** data source version, v1 = daily balance snapshot, v2 = income details */
         version?: string;
+        /**
+         * timezone to use for grouping individual line items by start of day, only applies to v2
+         * @default "Etc/UTC"
+         */
+        timezone?: string;
       },
       params: RequestParams = {},
     ) =>
@@ -3977,6 +4840,96 @@ export class Api<
       }),
 
     /**
+     * @description Returns the wallets dashboard summary for quick TTFP. Includes total custodians, addresses, value, and staked/idle breakdown.
+     *
+     * @tags Ethereum
+     * @name GetWalletsDashboardSummary
+     * @summary Get Wallets Dashboard Summary
+     * @request GET:/ethereum/wallets/dashboard/summary
+     */
+    getWalletsDashboardSummary: (params: RequestParams = {}) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: WalletsDashboardSummary;
+        },
+        any
+      >({
+        path: `/ethereum/wallets/dashboard/summary`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns the detailed wallet custodian breakdown for the donut chart and list view.
+     *
+     * @tags Ethereum
+     * @name GetWalletsDashboardCustodians
+     * @summary Get Wallets Dashboard Custodians
+     * @request GET:/ethereum/wallets/dashboard/custodians
+     */
+    getWalletsDashboardCustodians: (params: RequestParams = {}) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: WalletCustodian[];
+        },
+        any
+      >({
+        path: `/ethereum/wallets/dashboard/custodians`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns APR comparison data for PierTwo, External, and CESR (network average) over time as part of the wallets dashboard. Supports 1Y, 1M, and 1W time ranges.
+     *
+     * @tags Ethereum
+     * @name GetWalletsDashboardAprComparison
+     * @summary Get Wallets Dashboard APR Comparison
+     * @request GET:/ethereum/wallets/dashboard/apr-comparison
+     */
+    getWalletsDashboardAprComparison: (
+      query: {
+        timeRange: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: AprComparisonResponse;
+        },
+        any
+      >({
+        path: `/ethereum/wallets/dashboard/apr-comparison`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns the complete wallets dashboard with custodian breakdown, staked vs idle ETH, and PierTwo vs External staking. For backward compatibility - consider using /summary and /custodians endpoints separately for better TTFP.
+     *
+     * @tags Ethereum
+     * @name GetWalletsDashboard
+     * @summary Get Wallets Dashboard (Complete)
+     * @request GET:/ethereum/wallets/dashboard
+     */
+    getWalletsDashboard: (params: RequestParams = {}) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: WalletsDashboard;
+        },
+        any
+      >({
+        path: `/ethereum/wallets/dashboard`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Returns the accounts summary. Individual stakes are not flattened
      *
      * @tags Ethereum
@@ -4025,6 +4978,105 @@ export class Api<
         path: `/ethereum/validators/incomeHistory`,
         method: "GET",
         query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get validator information directly from the beacon chain API (beaconchain.io) by validator index. This queries the public beacon chain, not the internal database.
+     *
+     * @tags Ethereum
+     * @name GetValidatorByIndexFromBeaconChain
+     * @summary Get validator by index from beacon chain
+     * @request GET:/ethereum/validators/fromBeaconChain/{validatorIndex}
+     */
+    getValidatorByIndexFromBeaconChain: (
+      validatorIndex: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: BeaconChainValidatorDto;
+        },
+        any
+      >({
+        path: `/ethereum/validators/fromBeaconChain/${validatorIndex}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Add an external validator to the database for a specific customer
+     *
+     * @tags Ethereum
+     * @name AddExternalValidatorForCustomer
+     * @summary Add an external validator for a specific customer
+     * @request POST:/ethereum/validators/addExternalValidatorForCustomer
+     */
+    addExternalValidatorForCustomer: (
+      data: AddExternalValidatorForCustomerDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: AddExternalValidatorForCustomerDto;
+        },
+        any
+      >({
+        path: `/ethereum/validators/addExternalValidatorForCustomer`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Ethereum
+     * @name EthereumControllerGetValidatorsByWithdrawalAddress
+     * @request GET:/ethereum/validators/byWithdrawalAddress/{withdrawalAddress}
+     */
+    ethereumControllerGetValidatorsByWithdrawalAddress: (
+      withdrawalAddress: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: GetValidatorsByWithdrawalAddressResponseDto;
+        },
+        any
+      >({
+        path: `/ethereum/validators/byWithdrawalAddress/${withdrawalAddress}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Validates a consolidation request by checking for conflicts, balance limits, and ownership. Does not submit any transactions.
+     *
+     * @tags Ethereum
+     * @name EthereumControllerValidateConsolidation
+     * @summary Validate consolidation request
+     * @request POST:/ethereum/consolidations/validate
+     */
+    ethereumControllerValidateConsolidation: (
+      data: ValidateConsolidationRequestDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: ValidateConsolidationResponseDto;
+        },
+        any
+      >({
+        path: `/ethereum/consolidations/validate`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -4464,6 +5516,140 @@ export class Api<
         ...params,
       }),
   };
+  activity = {
+    /**
+     * @description Get transaction history for a user across Ethereum and Solana blockchains. Returns a paginated list of transactions including deposits, withdrawals, stake creations, and status changes.
+     *
+     * @tags Activity
+     * @name GetActivityHistory
+     * @summary Get activity history
+     * @request GET:/activity/history
+     */
+    getActivityHistory: (
+      query?: {
+        /** Filter by blockchain (ethereum, solana, or all) */
+        blockchain?: "ethereum" | "solana" | "all";
+        /**
+         * Number of records per page
+         * @min 1
+         * @max 100
+         * @default 20
+         */
+        pageSize?: number;
+        /**
+         * Page number
+         * @min 1
+         * @default 1
+         */
+        pageNumber?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        UtilRequiredKeys<PaginatedApiResponseBase, "data"> & {
+          data: ActivityHistoryItem[];
+        },
+        any
+      >({
+        path: `/activity/history`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+  };
+  public = {
+    /**
+     * @description get data for rendering network statistics (asset prices, assets UAM, etc)
+     *
+     * @tags Public
+     * @name GetWebsiteData
+     * @summary Get Pier Two Public Data
+     * @request GET:/public/websiteData
+     */
+    getWebsiteData: (
+      query?: {
+        /** currency used for price data (`usd` by default) */
+        currency?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: WebsiteData;
+        },
+        any
+      >({
+        path: `/public/websiteData`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description get static network config such as chain id, contract addresses, operator addresses, etc
+     *
+     * @tags Public
+     * @name NetworkConfig
+     * @summary Get Network Config
+     * @request GET:/public/networkConfig
+     */
+    networkConfig: (params: RequestParams = {}) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: PierTwoInfo;
+        },
+        any
+      >({
+        path: `/public/networkConfig`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get system information including API versions
+     *
+     * @tags Public
+     * @name GetSystemInfo
+     * @summary Get System Info
+     * @request GET:/public/systemInfo
+     */
+    getSystemInfo: (params: RequestParams = {}) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: SystemInfoResponse;
+        },
+        any
+      >({
+        path: `/public/systemInfo`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get supported currency symbols for reporting (chart data and rewards data exports)
+     *
+     * @tags Public
+     * @name SupportedCurrencies
+     * @summary Get Supported Currencies
+     * @request GET:/public/supportedCurrencies
+     */
+    supportedCurrencies: (params: RequestParams = {}) =>
+      this.request<
+        UtilRequiredKeys<ApiResponseBase, "data"> & {
+          data: string[];
+        },
+        any
+      >({
+        path: `/public/supportedCurrencies`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+  };
   cardano = {
     /**
      * @description Returns the details of Cardano staking positions for your account.
@@ -4753,98 +5939,6 @@ export class Api<
         any
       >({
         path: `/cardano/txStatus/${txHash}`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-  };
-  public = {
-    /**
-     * @description get data for rendering network statistics (asset prices, assets UAM, etc)
-     *
-     * @tags Public
-     * @name GetWebsiteData
-     * @summary Get Pier Two Public Data
-     * @request GET:/public/websiteData
-     */
-    getWebsiteData: (
-      query?: {
-        /** currency used for price data (`usd` by default) */
-        currency?: string;
-      },
-      params: RequestParams = {},
-    ) =>
-      this.request<
-        UtilRequiredKeys<ApiResponseBase, "data"> & {
-          data: WebsiteData;
-        },
-        any
-      >({
-        path: `/public/websiteData`,
-        method: "GET",
-        query: query,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description get static network config such as chain id, contract addresses, operator addresses, etc
-     *
-     * @tags Public
-     * @name NetworkConfig
-     * @summary Get Network Config
-     * @request GET:/public/networkConfig
-     */
-    networkConfig: (params: RequestParams = {}) =>
-      this.request<
-        UtilRequiredKeys<ApiResponseBase, "data"> & {
-          data: PierTwoInfo;
-        },
-        any
-      >({
-        path: `/public/networkConfig`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Get system information including API versions
-     *
-     * @tags Public
-     * @name GetSystemInfo
-     * @summary Get System Info
-     * @request GET:/public/systemInfo
-     */
-    getSystemInfo: (params: RequestParams = {}) =>
-      this.request<
-        UtilRequiredKeys<ApiResponseBase, "data"> & {
-          data: SystemInfoResponse;
-        },
-        any
-      >({
-        path: `/public/systemInfo`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Get supported currency symbols for reporting (chart data and rewards data exports)
-     *
-     * @tags Public
-     * @name SupportedCurrencies
-     * @summary Get Supported Currencies
-     * @request GET:/public/supportedCurrencies
-     */
-    supportedCurrencies: (params: RequestParams = {}) =>
-      this.request<
-        UtilRequiredKeys<ApiResponseBase, "data"> & {
-          data: string[];
-        },
-        any
-      >({
-        path: `/public/supportedCurrencies`,
         method: "GET",
         format: "json",
         ...params,
