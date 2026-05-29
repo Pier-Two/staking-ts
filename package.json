@@ -21,6 +21,6 @@
     "build:docs": "typedoc src/PierTwoStakingApi.ts --plugin typedoc-plugin-missing-exports"
   },
   "dependencies": {
-    "viem": "^2.22.17"
+    "viem": "^2.51.3"
   }
 }
